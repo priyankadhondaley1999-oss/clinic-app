@@ -1,8 +1,14 @@
-"buildCommand": "npm run build",
+{
+  "buildCommand": "npm run build",
   "outputDirectory": "build",
   "rewrites": [
-    { "source": "/welcome", "destination": "/welcome.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/welcome",
+      "destination": "/welcome.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
-
