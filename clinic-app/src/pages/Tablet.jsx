@@ -1,13 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 
-export default function Tablet() {
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    // Inject CSS
-    const style = document.createElement('style')
-    style.id = 'welcome-styles'
-    style.textContent = `/* ── Reset & base ─────────────────────────────────────────────────────────── */
+const FULL_PAGE = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome — Dr. Priyanka Dhondaley</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>
+<style>
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -1808,955 +1811,11 @@ body {
   #screen-exam-full .grid2,
   #screen-exam-full .checks { grid-template-columns: 1fr; }
   #screen-exam-full .muscle-row { grid-template-columns: 1.5fr 1fr 1fr; }
-}`
-    document.head.appendChild(style)
-
-    // Inject Google Fonts
-    const fonts = document.createElement('link')
-    fonts.rel = 'stylesheet'
-    fonts.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Jost:wght@300;400;500&display=swap'
-    document.head.appendChild(fonts)
-
-    // Inject Supabase SDK
-    const supaScript = document.createElement('script')
-    supaScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
-    supaScript.onload = () => {
-      // Inject our app JS after Supabase loads
-      const appScript = document.createElement('script')
-      appScript.id = 'welcome-script'
-      appScript.textContent = `// ── Supabase connection ──────────────────────────────────────────────────
-  const SUPA_URL = 'https://teqqwhvbkuudjmhxwgxo.supabase.co'
-  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlcXF3aHZia3V1ZGptaHh3Z3hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Njg5NTAsImV4cCI6MjA5MzU0NDk1MH0.iE6LPe6SpMKciZyL8bZGzs-k6uQtTuoxGts-SVEXQmQ'
-  const supa = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null
-
-  // Current patient context (set by lookup)
-  var currentPatient = null
-  var lookupTimer = null
-
-  // ── File number lookup ───────────────────────────────────────────────────
-  function lookupFileNumber(val) {
-    clearTimeout(lookupTimer)
-    var v = val.trim().toUpperCase()
-    document.getElementById('lookup-error').textContent = ''
-    document.getElementById('lookup-patient-box').classList.remove('visible')
-    document.getElementById('lookup-btn').disabled = true
-    currentPatient = null
-
-    if (v.length < 4) return
-
-    lookupTimer = setTimeout(async function() {
-      if (!supa) return
-      var { data, error } = await supa
-        .from('patients')
-        .select('*')
-        .ilike('file_number', v)
-        .single()
-
-      if (error || !data) {
-        document.getElementById('lookup-error').textContent = 'File number not found. Check with reception.'
-        return
-      }
-
-      currentPatient = data
-      document.getElementById('lookup-patient-name').textContent = data.name
-      document.getElementById('lookup-patient-meta').textContent =
-        [data.age && 'Age ' + data.age, data.gender, data.occupation].filter(Boolean).join(' · ')
-      document.getElementById('lookup-patient-box').classList.add('visible')
-      document.getElementById('lookup-btn').disabled = false
-      document.getElementById('lookup-error').textContent = ''
-
-      // Auto-set consultation type from patient record
-      if (data.consultation_type) {
-        selectedType = data.consultation_type === 'quick_relief' ? 'symptom' : 'both'
-      }
-    }, 500)
-  }
-
-  function confirmLookup() {
-    if (!currentPatient) return
-    goToScreen('screen-welcome')
-  }
-
-  function skipLookup() {
-    currentPatient = null
-    goToScreen('screen-welcome')
-  }
-
-  // ── Save to Supabase ─────────────────────────────────────────────────────
-  async function saveSimpleIntakeToSupabase(formData) {
-    if (!supa || !currentPatient) return
-    try {
-      await supa.from('intake_simple').insert({
-        patient_id: currentPatient.id,
-        complaint: formData.complaint,
-        duration: formData.duration,
-        area_affected: formData.area,
-        pain_score: parseInt(formData.pain) || null,
-        health_conditions: formData.conditions,
-        medications: formData.meds,
-        allergies: formData.allergies,
-        previous_treatment: formData.prev,
-        previous_treatment_detail: formData.prevDetail,
-        consent_signed: true,
-        signature: formData.sig,
-        raw_data: formData
-      })
-      console.log('Simple intake saved to Supabase')
-    } catch(e) {
-      console.error('Supabase save error:', e)
-    }
-  }
-
-  async function saveFullIntakeToSupabase(formData) {
-    if (!supa || !currentPatient) return
-    try {
-      await supa.from('intake_full').insert({
-        patient_id: currentPatient.id,
-        complaint: formData.complaint,
-        duration: formData.duration,
-        goal_short: formData.goalShort,
-        goal_long: formData.goalLong,
-        medications: formData.meds,
-        allergy_drug: formData.allergyDrug,
-        allergy_food: formData.allergyFood,
-        sleep_hours: formData.sleepHrs,
-        sleep_quality: formData.sleepQual,
-        stress_level: parseInt(formData.stress) || null,
-        brushing: formData.brush,
-        flossing: formData.floss,
-        anxiety_level: parseInt(formData.anxiety) || null,
-        amalgam: formData.amalgam,
-        consent_signed: true,
-        signature: formData.sig,
-        raw_data: formData
-      })
-      console.log('Full intake saved to Supabase')
-    } catch(e) {
-      console.error('Supabase save error:', e)
-    }
-  }
-
-  async function saveSimpleExamToSupabase(formData) {
-    if (!supa || !currentPatient) return
-    try {
-      await supa.from('examinations').insert({
-        patient_id: currentPatient.id,
-        exam_type: 'simple',
-        chief_complaint: formData.complaint,
-        pain_score: parseInt(formData.pain) || null,
-        diagnosis: formData.diagnosis,
-        prescription: formData.rx,
-        further_treatment: formData.nextTx,
-        next_appointment: formData.nextAppt,
-        raw_data: formData
-      })
-      console.log('Exam saved to Supabase')
-    } catch(e) {
-      console.error('Supabase save error:', e)
-    }
-  }
-
-  async function saveFullExamToSupabase(formData) {
-    if (!supa || !currentPatient) return
-    try {
-      await supa.from('examinations').insert({
-        patient_id: currentPatient.id,
-        exam_type: 'full',
-        primary_diagnosis: formData.primaryDx,
-        secondary_diagnosis: formData.secondaryDx,
-        phase1: formData.phase1,
-        phase2: formData.phase2,
-        phase3: formData.phase3,
-        phase4: formData.phase4,
-        next_appointment: formData.nextAppt,
-        raw_data: formData
-      })
-      console.log('Full exam saved to Supabase')
-    } catch(e) {
-      console.error('Supabase save error:', e)
-    }
-  }
-
-
-  var selectedType = null;
-
-  var hints = {
-    symptom:   'Perfect. We\\'ll focus completely on what\\'s bothering you today.',
-    rootcause: 'Great choice. We\\'ll fix it and find out why it happened.',
-    both:      'Great choice. You\\'ll leave knowing the full picture — today and long-term.'
-  };
-
-  var badges = {
-    symptom:   'Quick Relief',
-    rootcause: 'The Full Picture',
-    both:      'The Full Picture'
-  };
-
-  var messages = {
-    symptom:
-      'Your intake form is ready. Please take your time — there are no right or wrong answers. ' +
-      'Everything you share helps Dr. Priyanka understand and support you better today.',
-    rootcause:
-      'Your full intake form is ready. Please take your time — the more you share, the better Dr. Priyanka can understand and help you.',
-    both:
-      'Your complete intake form is ready. Take your time — you\\'re about to get the full picture of your health, inside and out.'
-  };
-
-  function goToScreen(id) {
-    // Update badge if navigating to full form screens
-    if ((id === 'screen-form-full' || id === 'screen-exam-full')) {
-      var badge = document.getElementById('ff-badge');
-      if (badge) badge.textContent = selectedType === 'both' ? 'The Complete Visit' : 'Deep Dive';
-    }
-    // Hide all screens immediately — no delay, no race condition
-    document.querySelectorAll('.screen').forEach(function(s) {
-      s.classList.remove('active', 'visible');
-      s.style.display = 'none';
-    });
-
-    var target = document.getElementById(id);
-    // Show the target screen
-    target.style.display = 'flex';
-    target.classList.add('active');
-
-    // Trigger fade-in on the very next paint
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        target.classList.add('visible');
-      });
-    });
-
-    window.scrollTo(0, 0);
-  }
-
-  function selectCard(card, type) {
-    document.querySelectorAll('.choice-card').forEach(function(c) {
-      c.classList.remove('selected');
-    });
-    card.classList.add('selected');
-    selectedType = type;
-    document.getElementById('selection-hint').textContent = hints[type];
-    document.getElementById('btn-proceed').classList.add('ready');
-  }
-
-  function confirmSelection() {
-    if (!selectedType) return;
-    if (selectedType === 'symptom') {
-      goToScreen('screen-form-simple');
-    } else {
-      goToScreen('screen-form-full');
-    }
-  }
-
-  // Show first screen on load
-  window.addEventListener('load', function() {
-    var lookup = document.getElementById('screen-lookup');
-    lookup.style.display = 'flex';
-    lookup.classList.add('active');
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        lookup.classList.add('visible');
-      });
-    });
-  });
-
-
-  // ── Simple form stepper ─────────────────────────────────────────────────
-  var spCurrent = 1;
-  function spStep(n) {
-    document.getElementById('sp-s' + spCurrent).classList.remove('active');
-    spCurrent = n;
-    document.getElementById('sp-s' + n).classList.add('active');
-    document.getElementById('sp-fill').style.width = Math.round((n/4)*100) + '%';
-    document.getElementById('sp-label').textContent = 'Step ' + n + ' of 4';
-    window.scrollTo(0,0);
-  }
-
-  function spGetRadio(name) {
-    var s = document.querySelector('input[name="' + name + '"]:checked');
-    return s && s.nextElementSibling ? s.nextElementSibling.textContent.trim() : 'Not answered';
-  }
-
-  function spVal(id) {
-    var el = document.getElementById(id);
-    return el && el.value.trim() ? el.value.trim() : '—';
-  }
-
-  function spBuildData() {
-    var L = [];
-    L.push('=== QUICK RELIEF PRE-CONSULTATION ===');
-    L.push('Clinician: Dr. Priyanka Dhondaley | Bengaluru');
-    L.push('Generated: ' + new Date().toLocaleString('en-IN'));
-    L.push('Consultation type: Quick Relief Visit');
-    L.push('');
-    L.push('── PATIENT ──');
-    L.push('Name: ' + spVal('sp-name'));
-    L.push('Age: ' + spVal('sp-age'));
-    L.push('Gender: ' + spVal('sp-gender'));
-    L.push('Phone: ' + spVal('sp-phone'));
-    L.push('Referred by: ' + spVal('sp-ref'));
-    L.push('');
-    L.push('── CHIEF CONCERN ──');
-    L.push('Main complaint: ' + spVal('sp-complaint'));
-    L.push('Duration: ' + spGetRadio('sp-dur'));
-    L.push('Area affected: ' + spGetRadio('sp-area'));
-    L.push('Pain / discomfort level: ' + spVal('sp-pain') + ' / 10');
-    L.push('');
-    L.push('── HEALTH BACKGROUND ──');
-    L.push('Health conditions: ' + spVal('sp-conditions'));
-    L.push('Medications / supplements: ' + spVal('sp-meds'));
-    L.push('Allergies: ' + spVal('sp-allergies'));
-    L.push('Previous dental treatment for this: ' + spGetRadio('sp-prev'));
-    L.push('Previous treatment details: ' + spVal('sp-prev-detail'));
-    L.push('');
-    return L.join('\\n');
-  }
-
-  function spBuildPrompt(data, name) {
-    return 'You are a clinical decision-support assistant specialising in functional dentistry. ' +
-      'I am Dr. Priyanka Dhondaley, a functional dentist in Bengaluru. ' +
-      'I am about to see ' + name + ' for a focused Quick Relief consultation. ' +
-      'Based on their brief intake below, generate a concise pre-consultation briefing with:\\n\\n' +
-      '1. CHIEF CONCERN — Clinical read of their complaint in 2–3 sentences\\n' +
-      '2. RED FLAGS — Any urgent or watch-level findings (max 4, colour coded: URGENT / WATCH / NOTE)\\n' +
-      '3. FOCUS FOR TODAY — What to examine, what to look for, what to rule out (3–4 sentences)\\n' +
-      '4. SAFETY CHECKS — Any allergy, medication, or health condition interactions to be aware of before treatment\\n' +
-      '5. CHAIR-SIDE PROMPTS — 2–3 questions to ask this patient when they sit down\\n\\n' +
-      'Keep it brief and action-focused — this is a targeted relief visit, not a full functional workup. ' +
-      'After the briefing, produce a clean PDF using Python and reportlab in the same style as the functional dentistry briefings ' +
-      '(forest green header, patient name band, colour-coded flags, readable in 30 seconds).\\n\\n' +
-      'Patient intake:\\n\\n---\\n\\n' + data;
-  }
-
-  function spSubmit() {
-    if (!document.getElementById('sp-consent-check').checked) {
-      alert('Please tick the consent checkbox before submitting.');
-      return;
-    }
-    var data = spBuildData();
-    var name = spVal('sp-name') !== '—' ? spVal('sp-name') : 'this patient';
-    var prompt = spBuildPrompt(data, name);
-
-    document.getElementById('sp-prompt-text').textContent = prompt;
-    document.getElementById('sp-data-text').textContent = data;
-    document.getElementById('sp-sum-name').textContent = (name !== 'this patient' ? name : 'Patient') + ' — form submitted';
-    document.getElementById('sp-sum-time').textContent = new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
-
-    // Save to Supabase
-    saveSimpleIntakeToSupabase({
-      complaint: spVal('sp-complaint'),
-      duration: spGetRadio('sp-dur'),
-      area: spGetRadio('sp-area'),
-      pain: spVal('sp-pain'),
-      conditions: spVal('sp-conditions'),
-      meds: spVal('sp-meds'),
-      allergies: spVal('sp-allergies'),
-      prev: spGetRadio('sp-prev'),
-      prevDetail: spVal('sp-prev-detail'),
-      sig: spVal('sp-sig'),
-      date: spVal('sp-date')
-    })
-
-    document.getElementById('sp-steps').style.display = 'none';
-    document.getElementById('sp-summary').classList.add('factive');
-    window.scrollTo(0,0);
-  }
-
-  function spCopy(textId, btnId, label) {
-    var text = document.getElementById(textId).textContent;
-    function flash() {
-      var btn = document.getElementById(btnId);
-      btn.textContent = 'Copied ✓'; btn.classList.add('fdone');
-      setTimeout(function() { btn.textContent = label; btn.classList.remove('fdone'); }, 2500);
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(flash).catch(function() { fbFallback(text, flash); });
-    } else { fbFallback(text, flash); }
-  }
-
-  function fbFallback(text, cb) {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
-    ta.setAttribute('readonly','');
-    document.body.appendChild(ta);
-    ta.select(); ta.setSelectionRange(0, ta.value.length);
-    try { document.execCommand('copy'); cb(); } catch(e) { alert('Please copy manually: Ctrl+A then Ctrl+C'); }
-    document.body.removeChild(ta);
-  }
-
-  function spReset() {
-    if (!confirm('Clear and start over for a new patient?')) return;
-    location.reload();
-  }
-
-  // ── Full form stepper ────────────────────────────────────────────────────
-  var ffCurrent = 1;
-  function ffStep(n) {
-    document.getElementById('ff-s' + ffCurrent).classList.remove('active');
-    ffCurrent = n;
-    document.getElementById('ff-s' + n).classList.add('active');
-    document.getElementById('ff-fill').style.width = Math.round((n/7)*100) + '%';
-    document.getElementById('ff-label').textContent = 'Section ' + n + ' of 7';
-    window.scrollTo(0,0);
-  }
-
-  function ffGetChecked(groupId) {
-    var g = document.getElementById(groupId);
-    if (!g) return 'None';
-    var items = [];
-    g.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
-      if (cb.nextElementSibling) items.push(cb.nextElementSibling.textContent.trim());
-    });
-    return items.length ? items.join(', ') : 'None';
-  }
-
-  function ffGetRadio(name) {
-    var s = document.querySelector('input[name="' + name + '"]:checked');
-    return s && s.nextElementSibling ? s.nextElementSibling.textContent.trim() : 'Not answered';
-  }
-
-  function ffVal(id) {
-    var el = document.getElementById(id);
-    return el && el.value.trim() ? el.value.trim() : '—';
-  }
-
-  function ffBuildData() {
-    var L = [];
-    L.push('=== FUNCTIONAL DENTISTRY PRE-CONSULTATION INTAKE ===');
-    L.push('Clinician: Dr. Priyanka Dhondaley | Bengaluru');
-    L.push('Generated: ' + new Date().toLocaleString('en-IN'));
-    L.push('Consultation type: ' + (selectedType === 'both' ? 'Complete Visit' : 'Deep Dive'));
-    L.push('');
-    L.push('── PERSONAL INFORMATION ──');
-    L.push('Name: ' + ffVal('ff-name'));
-    L.push('Date of birth: ' + ffVal('ff-dob'));
-    L.push('Age: ' + ffVal('ff-age'));
-    L.push('Gender: ' + ffVal('ff-gender'));
-    L.push('Phone: ' + ffVal('ff-phone'));
-    L.push('Email: ' + ffVal('ff-email'));
-    L.push('Address: ' + ffVal('ff-address'));
-    L.push('Occupation: ' + ffVal('ff-occ'));
-    L.push('Referred by: ' + ffVal('ff-ref'));
-    L.push('');
-    L.push('── CHIEF CONCERN & HEALTH GOALS ──');
-    L.push('Main reason for consultation: ' + ffVal('ff-complaint'));
-    L.push('Duration of concern: ' + ffGetRadio('ff-duration'));
-    L.push('Previous treatment sought: ' + ffGetRadio('ff-prev-tx'));
-    L.push('Previous treatment details: ' + ffVal('ff-prevtx-detail'));
-    L.push('Short-term goal: ' + ffVal('ff-goal-short'));
-    L.push('Long-term goal: ' + ffVal('ff-goal-long'));
-    L.push('');
-    L.push('── MEDICAL HISTORY ──');
-    L.push('Current conditions: ' + ffGetChecked('ff-g-conditions'));
-    L.push('Other conditions: ' + ffVal('ff-conditions-other'));
-    L.push('Medications & supplements: ' + ffVal('ff-meds'));
-    L.push('Drug allergies: ' + ffVal('ff-allergy-drug'));
-    L.push('Material/metal allergies: ' + ffVal('ff-allergy-material'));
-    L.push('Food allergies/intolerances: ' + ffVal('ff-allergy-food'));
-    L.push('Surgical history: ' + ffVal('ff-surgeries'));
-    L.push('Family history: ' + ffGetChecked('ff-g-family'));
-    L.push('');
-    L.push('── LIFESTYLE & NUTRITION ──');
-    L.push('Diet type: ' + ffVal('ff-diet'));
-    L.push('Meals per day: ' + ffVal('ff-meals'));
-    L.push('Daily water intake: ' + ffVal('ff-water'));
-    L.push('Diet habits: ' + ffGetChecked('ff-g-diet-habits'));
-    L.push('Average sleep: ' + ffVal('ff-sleep-hrs'));
-    L.push('Sleep quality: ' + ffVal('ff-sleep-qual'));
-    L.push('Sleep symptoms: ' + ffGetChecked('ff-g-sleep'));
-    L.push('Exercise frequency: ' + ffVal('ff-exercise'));
-    L.push('Stress level: ' + ffVal('ff-stress') + '/10');
-    L.push('Stress factors: ' + ffGetChecked('ff-g-stress'));
-    L.push('Habits: ' + ffGetChecked('ff-g-habits'));
-    L.push('');
-    L.push('── DENTAL & ORAL HISTORY ──');
-    L.push('Last dental visit: ' + ffVal('ff-last-visit'));
-    L.push('Reason for last visit: ' + ffVal('ff-last-reason'));
-    L.push('Current oral symptoms: ' + ffGetChecked('ff-g-oral-symptoms'));
-    L.push('Brushing frequency: ' + ffVal('ff-brush'));
-    L.push('Flossing frequency: ' + ffVal('ff-floss'));
-    L.push('Toothpaste: ' + ffVal('ff-toothpaste'));
-    L.push('Mouthwash: ' + ffVal('ff-mouthwash'));
-    L.push('Extra hygiene tools: ' + ffGetChecked('ff-g-hygiene-extras'));
-    L.push('Previous dental treatment: ' + ffGetChecked('ff-g-prev-dental'));
-    L.push('Dental anxiety (0-10): ' + ffVal('ff-anxiety'));
-    L.push('Past traumatic dental experience: ' + ffVal('ff-dental-trauma'));
-    L.push('');
-    L.push('── HORMONAL HEALTH & ENVIRONMENTAL EXPOSURE ──');
-    L.push('Hormonal/reproductive: ' + ffGetChecked('ff-g-hormonal'));
-    L.push('Hormonal oral changes: ' + ffVal('ff-hormonal-oral'));
-    L.push('Environmental/toxic exposure: ' + ffGetChecked('ff-g-toxins'));
-    L.push('Amalgam fillings: ' + ffVal('ff-amalgam'));
-    L.push('Metal/material sensitivities: ' + ffVal('ff-metal-sensitivity'));
-    L.push('Recent investigations: ' + ffVal('ff-recent-labs'));
-    L.push('');
-    return L.join('\\n');
-  }
-
-  function ffBuildPrompt(data, name) {
-    return 'You are a clinical decision-support assistant specialising in functional dentistry. ' +
-      'I am Dr. Priyanka Dhondaley, a functional dentist in Bengaluru. ' +
-      'I am about to see ' + name + ' and need a pre-consultation briefing based on their intake form.\\n\\n' +
-      'Generate a structured clinical briefing and then produce it as a downloadable PDF. Use the following sections:\\n\\n' +
-      '1. COMPLEXITY TIER — Rate as Low / Moderate / High / Complex with a one-line rationale\\n' +
-      '2. CHIEF CONCERN — Clinical reframe of their presenting complaint in functional dentistry language (2-3 sentences)\\n' +
-      '3. RED FLAGS — URGENT / WATCH / NOTE colour-coded list. Maximum 6 flags.\\n' +
-      '4. SYSTEMIC DRIVERS — Which body systems are contributing to their oral health picture\\n' +
-      '5. FOCUS AREAS FOR THIS CONSULT — What to examine carefully (3-5 sentences)\\n' +
-      '6. SUGGESTED INVESTIGATIONS — Specific tests to consider ordering. Max 8.\\n' +
-      '7. CHAIR-SIDE CONVERSATION PROMPTS — 3-4 open questions tailored to this patient\\n\\n' +
-      'After the briefing, produce a clean PDF using Python and reportlab (forest green header, patient band, colour-coded flags).\\n\\n' +
-      'Patient intake:\\n\\n---\\n\\n' + data;
-  }
-
-  function ffSubmit() {
-    if (!document.getElementById('ff-consent-check').checked) {
-      alert('Please tick the consent checkbox before submitting.');
-      return;
-    }
-    var data = ffBuildData();
-    var name = ffVal('ff-name') !== '—' ? ffVal('ff-name') : 'this patient';
-    var prompt = ffBuildPrompt(data, name);
-
-    document.getElementById('ff-prompt-text').textContent = prompt;
-    document.getElementById('ff-data-text').textContent = data;
-    document.getElementById('ff-sum-name').textContent = (name !== 'this patient' ? name : 'Patient') + ' — intake submitted';
-    document.getElementById('ff-sum-time').textContent = new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
-
-    // Save to Supabase
-    saveFullIntakeToSupabase({
-      complaint: ffVal('ff-complaint'),
-      duration: ffGetRadio('ff-duration'),
-      goalShort: ffVal('ff-goal-short'),
-      goalLong: ffVal('ff-goal-long'),
-      meds: ffVal('ff-meds'),
-      allergyDrug: ffVal('ff-allergy-drug'),
-      allergyFood: ffVal('ff-allergy-food'),
-      sleepHrs: ffVal('ff-sleep-hrs'),
-      sleepQual: ffVal('ff-sleep-qual'),
-      stress: ffVal('ff-stress'),
-      brush: ffVal('ff-brush'),
-      floss: ffVal('ff-floss'),
-      anxiety: ffVal('ff-anxiety'),
-      amalgam: ffVal('ff-amalgam'),
-      sig: ffVal('ff-sig'),
-      date: ffVal('ff-sig-date')
-    })
-
-    document.getElementById('ff-steps').style.display = 'none';
-    document.getElementById('ff-summary').classList.add('factive');
-    window.scrollTo(0,0);
-  }
-
-  function ffCopy(textId, btnId, label) { spCopy(textId, btnId, label); }
-
-  function ffReset() {
-    if (!confirm('Clear and start over for a new patient?')) return;
-    location.reload();
-  }
-
-
-  // ── Simple symptom consultation form ──────────────────────────────────────
-  var seCurrent = 1;
-
-  function seStep(n) {
-    document.getElementById('se-s' + seCurrent).classList.remove('active');
-    seCurrent = n;
-    document.getElementById('se-s' + n).classList.add('active');
-    document.getElementById('se-fill').style.width = Math.round((n/4)*100) + '%';
-    document.getElementById('se-label').textContent = 'Section ' + n + ' of 4';
-    window.scrollTo(0,0);
-  }
-
-  function seVal(id) {
-    var el = document.getElementById(id); return el && el.value.trim() ? el.value.trim() : '—';
-  }
-
-  function seGetChecked(groupId) {
-    var g = document.getElementById(groupId);
-    if (!g) return 'None';
-    var items = [];
-    g.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
-      if (cb.nextElementSibling) items.push(cb.nextElementSibling.textContent.trim());
-    });
-    return items.length ? items.join(', ') : 'None';
-  }
-
-  function seGetAllChecked(stepId) {
-    var step = document.getElementById(stepId);
-    if (!step) return [];
-    var results = [];
-    step.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
-      var divider = cb.closest('.fsection').querySelector('.fdivider');
-      // Find nearest preceding divider
-      var allDividers = Array.from(cb.closest('.fsection').querySelectorAll('.fdivider'));
-      var preceding = null;
-      allDividers.forEach(function(d) {
-        if (d.compareDocumentPosition(cb) & Node.DOCUMENT_POSITION_FOLLOWING) preceding = d;
-      });
-      var label = preceding ? preceding.textContent.trim() : 'Selected';
-      var text = cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : '';
-      results.push(label + ': ' + text);
-    });
-    return results;
-  }
-
-  function seBuildSummary() {
-    var L = [];
-    L.push('=== SYMPTOM-BASED CONSULTATION RECORD ===');
-    L.push('Clinician: Dr. Priyanka Dhondaley | Bengaluru');
-    L.push('Date: ' + new Date().toLocaleString('en-IN'));
-    L.push('');
-    L.push('── PATIENT ──');
-    L.push('Name: ' + seVal('se-name'));
-    L.push('Age: ' + seVal('se-age'));
-    L.push('Date: ' + seVal('se-date'));
-    L.push('File no.: ' + seVal('se-file'));
-    L.push('Consultation type: ' + seVal('se-type'));
-    L.push('');
-    L.push('── CHIEF COMPLAINT ──');
-    L.push('Complaint: ' + seVal('se-complaint'));
-    L.push('Duration: ' + seVal('se-duration'));
-    L.push('Pain score: ' + seVal('se-pain') + ' / 10');
-
-    // Pain character checkboxes
-    var painChars = [];
-    document.querySelectorAll('#se-s1 input[type=checkbox]:checked').forEach(function(cb) {
-      if (cb.nextElementSibling) painChars.push(cb.nextElementSibling.textContent.trim());
-    });
-    if (painChars.length) L.push('Pain character: ' + painChars.join(', '));
-    L.push('');
-
-    L.push('── CLINICAL FINDINGS ──');
-    L.push('Tooth/teeth: ' + seVal('se-tooth'));
-    L.push('Vitality test: ' + seVal('se-vitality'));
-    L.push('Percussion: ' + seVal('se-percussion'));
-    L.push('Palpation: ' + seVal('se-palpation'));
-    L.push('Probing depths: ' + seVal('se-probing'));
-    L.push('Bleeding on probing: ' + seVal('se-bop'));
-    L.push('Gingival status: ' + seVal('se-gingiva'));
-    L.push('Mobility: ' + seVal('se-mobility'));
-    L.push('Radiograph taken: ' + seVal('se-xray-type'));
-    L.push('Radiographic findings: ' + seVal('se-xray-findings'));
-    L.push('Radiographic notes: ' + seVal('se-xray-notes'));
-    L.push('Caries: ' + seVal('se-caries'));
-    L.push('Existing restoration: ' + seVal('se-restoration'));
-    L.push('Clinical notes: ' + seVal('se-clinical-notes'));
-    L.push('');
-
-    L.push('── DIAGNOSIS & TREATMENT ──');
-    L.push('Diagnosis: ' + seVal('se-diagnosis'));
-    L.push('Diagnosis notes: ' + seVal('se-diagnosis-notes'));
-    L.push('Treatment provided: ' + seGetChecked('se-g-tx'));
-    L.push('Treatment notes: ' + seVal('se-tx-notes'));
-    L.push('Prescription: ' + seVal('se-rx'));
-    L.push('Further treatment needed: ' + seVal('se-next-tx'));
-    L.push('');
-
-    L.push('── PATIENT COMMUNICATION ──');
-    L.push('Diagnosis explained: ' + seVal('se-explained'));
-    L.push('Home care advice: ' + seVal('se-homecare'));
-
-    var postop = [];
-    document.querySelectorAll('#se-s4 input[type=checkbox]:checked').forEach(function(cb) {
-      if (cb.nextElementSibling) postop.push(cb.nextElementSibling.textContent.trim());
-    });
-    if (postop.length) L.push('Post-op instructions given: ' + postop.join(', '));
-
-    L.push('Next appointment: ' + seVal('se-next-appt'));
-    L.push('Recall interval: ' + seVal('se-recall'));
-    L.push('');
-    L.push('Clinician: Dr. Priyanka Dhondaley');
-    L.push('Date signed: ' + seVal('se-sign-date'));
-
-    return L.join('\\n');
-  }
-
-  function seSubmit() {
-    var summary = seBuildSummary();
-    var patientName = seVal('se-name');
-
-    var prompt = 'You are a clinical decision-support assistant specialising in functional dentistry. ' +
-      'I am Dr. Priyanka Dhondaley, a functional dentist in Bengaluru. ' +
-      'I have just completed a symptom-based consultation for ' + patientName + '. ' +
-      'Based on the consultation record below, generate a concise Treatment Summary Report with:\\n\\n' +
-      '1. DIAGNOSIS SUMMARY — Confirm and briefly explain the working diagnosis in plain language\\n' +
-      '2. TREATMENT PROVIDED — What was done today and why\\n' +
-      '3. NEXT STEPS — What needs to happen next, in priority order\\n' +
-      '4. PATIENT INSTRUCTIONS — Key home care points for this patient\\n' +
-      '5. WATCH FOR — Signs that would indicate the patient needs to return urgently\\n\\n' +
-      'Keep it concise — this is a symptom-based visit, not a full functional workup. ' +
-      'After the report, produce a clean PDF using Python and reportlab ' +
-      '(forest green header, patient name band, clean sections, clinician copy). ' +
-      'Consultation record:\\n\\n---\\n\\n' + summary;
-
-    document.getElementById('se-summary-text').textContent = prompt;
-    document.getElementById('se-saved-name').textContent =
-      (patientName !== '—' ? patientName : 'Patient') + ' — record complete';
-    document.getElementById('se-saved-time').textContent =
-      new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
-
-    // Save to Supabase
-    saveSimpleExamToSupabase({
-      complaint: seVal('se-complaint'),
-      pain: seVal('se-pain'),
-      diagnosis: seVal('se-diagnosis'),
-      rx: seVal('se-rx'),
-      nextTx: seVal('se-next-tx'),
-      nextAppt: seVal('se-next-appt')
-    })
-
-    document.getElementById('se-steps').style.display = 'none';
-    document.getElementById('se-saved').classList.add('factive');
-    window.scrollTo(0,0);
-  }
-
-  function seCopy() {
-    var text = document.getElementById('se-summary-text').textContent;
-    function flash() {
-      var btn = document.getElementById('se-copy-btn');
-      btn.textContent = 'Copied ✓'; btn.classList.add('fdone');
-      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('fdone'); }, 2500);
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(flash).catch(function() { fbFallback(text, flash); });
-    } else { fbFallback(text, flash); }
-  }
-
-  function seReset() {
-    if (!confirm('Clear and start a new consultation record?')) return;
-    location.reload();
-  }
-
-
-  // ── Full functional exam form (xe prefix) ──────────────────────────────────
-  var xeCurrent = 1;
-
-  function xeStep(n) {
-    document.getElementById('xe-s' + xeCurrent).classList.remove('active');
-    xeCurrent = n;
-    document.getElementById('xe-s' + n).classList.add('active');
-    document.getElementById('xe-fill').style.width = Math.round((n/6)*100) + '%';
-    document.getElementById('xe-label').textContent = 'Section ' + n + ' of 6';
-    window.scrollTo(0,0);
-  }
-
-  // Build muscle palpation table for xe form
-  (function() {
-    var muscles = ['Masseter','Temporalis (anterior)','Temporalis (posterior)',
-      'Medial pterygoid','Lateral pterygoid','Sternocleidomastoid','Trapezius','Digastric'];
-    var opts = '<option value="">—</option><option>NT</option><option>0 — no pain</option>' +
-               '<option>1 — mild</option><option>2 — moderate</option><option>3 — severe</option>';
-    var container = document.getElementById('xe-muscle-rows');
-    if (!container) return;
-    muscles.forEach(function(m, i) {
-      var row = document.createElement('div');
-      row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:6px;';
-      row.innerHTML = '<span style="font-family:var(--sans);font-size:13px;color:var(--ink);">' + m + '</span>' +
-        '<select id="xe-muscle-r-' + i + '" style="font-family:var(--sans);font-size:12px;padding:5px 7px;border:0.5px solid var(--sand);border-radius:8px;background:var(--cream);color:var(--ink);width:100%;outline:none;-webkit-appearance:none;">' + opts + '</select>' +
-        '<select id="xe-muscle-l-' + i + '" style="font-family:var(--sans);font-size:12px;padding:5px 7px;border:0.5px solid var(--sand);border-radius:8px;background:var(--cream);color:var(--ink);width:100%;outline:none;-webkit-appearance:none;">' + opts + '</select>';
-      container.appendChild(row);
-    });
-  })();
-
-  function xeVal(id) {
-    var el = document.getElementById(id);
-    return el && el.value.trim() ? el.value.trim() : '—';
-  }
-
-  function xeGetChecked(groupId) {
-    var g = document.getElementById(groupId);
-    if (!g) return 'None';
-    var items = [];
-    g.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
-      if (cb.nextElementSibling) items.push(cb.nextElementSibling.textContent.trim());
-    });
-    return items.length ? items.join(', ') : 'None';
-  }
-
-  function xeGetMuscles() {
-    var muscles = ['Masseter','Temporalis (anterior)','Temporalis (posterior)',
-      'Medial pterygoid','Lateral pterygoid','Sternocleidomastoid','Trapezius','Digastric'];
-    var lines = [];
-    muscles.forEach(function(m, i) {
-      var r = document.getElementById('xe-muscle-r-' + i);
-      var l = document.getElementById('xe-muscle-l-' + i);
-      if (r && l && (r.value || l.value)) {
-        lines.push(m + ': R=' + (r.value||'—') + ' / L=' + (l.value||'—'));
-      }
-    });
-    return lines.length ? lines.join('; ') : '—';
-  }
-
-  function xeBuildData() {
-    var L = [];
-    L.push('=== FUNCTIONAL DENTISTRY CLINICAL EXAMINATION RECORD ===');
-    L.push('Clinician: Dr. Priyanka Dhondaley | Bengaluru');
-    L.push('Generated: ' + new Date().toLocaleString('en-IN'));
-    L.push('');
-    L.push('── PATIENT IDENTIFICATION ──');
-    L.push('Patient name: ' + xeVal('xe-name'));
-    L.push('File number: ' + xeVal('xe-id'));
-    L.push('Examination date: ' + xeVal('xe-date'));
-    L.push('Consultation type: ' + xeVal('xe-type'));
-    L.push('Referral source: ' + xeVal('xe-ref'));
-    L.push('');
-    L.push('── EXTRAORAL EXAMINATION ──');
-    L.push('Facial symmetry: ' + xeVal('xe-symmetry'));
-    L.push('Facial profile: ' + xeVal('xe-profile'));
-    L.push('Vertical face height: ' + xeVal('xe-vfh'));
-    L.push('Facial muscle tone: ' + xeVal('xe-muscle-tone'));
-    L.push('Airway / breathing signs: ' + xeGetChecked('xe-g-airway'));
-    L.push('Airway questionnaire score: ' + xeVal('xe-airway-score'));
-    L.push('Lymph nodes: ' + xeGetChecked('xe-g-lymph'));
-    L.push('Max mouth opening: ' + xeVal('xe-mmo') + ' mm');
-    L.push('Opening pattern: ' + xeVal('xe-opening'));
-    L.push('TMJ sounds — right: ' + xeVal('xe-tmj-r'));
-    L.push('TMJ sounds — left: ' + xeVal('xe-tmj-l'));
-    L.push('Muscle palpation: ' + xeGetMuscles());
-    L.push('Skin / nutritional clues: ' + xeGetChecked('xe-g-skin'));
-    L.push('Extraoral notes: ' + xeVal('xe-extraoral-notes'));
-    L.push('');
-    L.push('── INTRAORAL EXAMINATION ──');
-    L.push('Lips: ' + xeVal('xe-lips'));
-    L.push('Buccal mucosa: ' + xeVal('xe-buccal'));
-    L.push('Tongue size: ' + xeVal('xe-tongue-size'));
-    L.push('Tongue posture: ' + xeVal('xe-tongue-posture'));
-    L.push('Tongue dorsum: ' + xeVal('xe-tongue-dorsum'));
-    L.push('Frenulum: ' + xeVal('xe-frenulum'));
-    L.push('Hard palate: ' + xeVal('xe-palate'));
-    L.push('Soft palate / oropharynx: ' + xeVal('xe-oropharynx'));
-    L.push('Floor of mouth: ' + xeVal('xe-floor'));
-    L.push('Salivary flow: ' + xeVal('xe-saliva'));
-    L.push('Halitosis: ' + xeVal('xe-halitosis') + ' — origin: ' + xeVal('xe-halitosis-origin'));
-    L.push('Oral microbiome test: ' + xeVal('xe-microbiome'));
-    L.push('Salivary pH: ' + xeVal('xe-ph'));
-    L.push('BPE / Periodontal score: ' + xeVal('xe-bpe'));
-    L.push('Bleeding on probing: ' + xeVal('xe-bop'));
-    L.push('Furcation involvement: ' + xeVal('xe-furcation'));
-    L.push('Recession: ' + xeVal('xe-recession'));
-    L.push('Bone loss (radiographic): ' + xeVal('xe-bone-loss'));
-    L.push('Periodontal staging: ' + xeVal('xe-perio-stage'));
-    L.push('Nutritional oral clues: ' + xeGetChecked('xe-g-nutrition'));
-    L.push('Intraoral notes: ' + xeVal('xe-intraoral-notes'));
-    L.push('');
-    L.push('── DENTAL STATUS & OCCLUSION ──');
-    L.push('Teeth present: ' + xeVal('xe-teeth-count'));
-    L.push('Missing teeth: ' + xeVal('xe-missing'));
-    L.push('Caries activity: ' + xeVal('xe-caries'));
-    L.push('Caries risk: ' + xeVal('xe-caries-risk'));
-    L.push('Existing restorations: ' + xeVal('xe-restorations'));
-    L.push('Existing implants: ' + xeVal('xe-implants'));
-    L.push('Wear type: ' + xeVal('xe-wear-type') + ' | Severity: ' + xeVal('xe-wear-sev'));
-    L.push('BEWE score: ' + xeVal('xe-bewe'));
-    L.push('Wear aetiology: ' + xeVal('xe-wear-cause'));
-    L.push("Angle's classification: " + xeVal('xe-angles'));
-    L.push('Overjet: ' + xeVal('xe-overjet') + ' mm | Overbite: ' + xeVal('xe-overbite') + ' mm');
-    L.push('Crossbite: ' + xeVal('xe-crossbite'));
-    L.push('Upper arch: ' + xeVal('xe-arch-upper') + ' | Lower arch: ' + xeVal('xe-arch-lower'));
-    L.push('Tongue space: ' + xeVal('xe-tongue-space'));
-    L.push('Bruxism / parafunction: ' + xeVal('xe-bruxism'));
-    L.push('Dental notes: ' + xeVal('xe-dental-notes'));
-    L.push('');
-    L.push('── INVESTIGATIONS & FUNCTIONAL MATRIX ──');
-    L.push('Radiographs taken: ' + xeVal('xe-xrays'));
-    L.push('Previous radiographs: ' + xeVal('xe-prev-xray'));
-    L.push('Radiographic findings: ' + xeVal('xe-xray-findings'));
-    L.push('Labs ordered: ' + xeGetChecked('xe-g-labs'));
-    L.push('Other investigations: ' + xeVal('xe-other-labs'));
-    L.push('Functional drivers identified: ' + xeGetChecked('xe-g-drivers'));
-    L.push('Referrals indicated: ' + xeGetChecked('xe-g-referrals'));
-    L.push('');
-    L.push('── CLINICAL SUMMARY & CARE PLAN ──');
-    L.push('Primary diagnosis: ' + xeVal('xe-primary-dx'));
-    L.push('Secondary diagnoses: ' + xeVal('xe-secondary-dx'));
-    L.push('Antecedents: ' + xeVal('xe-antecedents'));
-    L.push('Triggers: ' + xeVal('xe-triggers'));
-    L.push('Mediators: ' + xeVal('xe-mediators'));
-    L.push('Phase 1 — Stabilisation: ' + xeVal('xe-phase1'));
-    L.push('Phase 2 — Root-cause: ' + xeVal('xe-phase2'));
-    L.push('Phase 3 — Restorative: ' + xeVal('xe-phase3'));
-    L.push('Phase 4 — Maintenance: ' + xeVal('xe-phase4'));
-    L.push('Patient communication: ' + xeVal('xe-communication'));
-    L.push('Next appointment: ' + xeVal('xe-next-appt'));
-    L.push('Date signed: ' + xeVal('xe-sign-date'));
-    return L.join('\\n');
-  }
-
-  function xeBuildPrompt(data, name) {
-    return 'You are a clinical decision-support assistant specialising in functional dentistry. ' +
-      'I am Dr. Priyanka Dhondaley, a functional dentist in Bengaluru. ' +
-      'I have just completed a clinical examination for ' + name + '. ' +
-      'Based on the full examination record below, generate a structured Treatment Planning Report.\\n\\n' +
-      'The report must include:\\n\\n' +
-      '1. CLINICAL SUMMARY — A concise 3–4 sentence overview of the key clinical findings and overall health picture.\\n\\n' +
-      '2. PRIORITY PROBLEM LIST — Rank all identified problems from most to least urgent. For each:\\n' +
-      '   - State the problem clearly\\n' +
-      '   - Explain why it is at this priority level\\n' +
-      '   - List 2–3 specific treatment options with brief pros/cons\\n\\n' +
-      '3. PHASED TREATMENT PLAN:\\n' +
-      '   Phase 1: Stabilisation & urgent care (within 1–2 visits)\\n' +
-      '   Phase 2: Root-cause & systemic intervention (weeks 2–8)\\n' +
-      '   Phase 3: Definitive restorative / rehabilitative care\\n' +
-      '   Phase 4: Maintenance, recall & monitoring\\n\\n' +
-      '4. FUNCTIONAL & SYSTEMIC FOCUS — Systemic or lifestyle interventions to run alongside dental treatment. Include specific nutrition, lifestyle, supplement, or referral recommendations.\\n\\n' +
-      '5. PATIENT COMMUNICATION NOTES — How to explain the plan to this specific patient. Key messages, likely questions, and potential barriers to compliance.\\n\\n' +
-      '6. RECALL & MONITORING SCHEDULE — Recommended recall interval, what to reassess, follow-up tests.\\n\\n' +
-      'Be specific to the clinical findings. Do not be generic. After the report, produce a clean PDF using Python and reportlab ' +
-      '(forest green header, patient name band, colour-coded priority levels HIGH/MODERATE/LOW, readable in under 2 minutes).\\n\\n' +
-      'Clinical examination record:\\n\\n---\\n\\n' + data;
-  }
-
-  function xeSubmit() {
-    var data = xeBuildData();
-    var name = xeVal('xe-name') !== '—' ? xeVal('xe-name') : 'this patient';
-    var prompt = xeBuildPrompt(data, name);
-
-    document.getElementById('xe-prompt-text').textContent = prompt;
-    document.getElementById('xe-data-text').textContent = data;
-    document.getElementById('xe-sum-name').textContent =
-      (name !== 'this patient' ? name : 'Patient') + ' — examination submitted';
-    document.getElementById('xe-sum-time').textContent =
-      new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
-
-    // Save to Supabase
-    saveFullExamToSupabase({
-      primaryDx: xeVal('xe-primary-dx'),
-      secondaryDx: xeVal('xe-secondary-dx'),
-      phase1: xeVal('xe-phase1'),
-      phase2: xeVal('xe-phase2'),
-      phase3: xeVal('xe-phase3'),
-      phase4: xeVal('xe-phase4'),
-      nextAppt: xeVal('xe-next-appt')
-    })
-
-    document.getElementById('xe-steps').style.display = 'none';
-    document.getElementById('xe-summary').classList.add('factive');
-    window.scrollTo(0,0);
-  }
-
-  function xeCopy(textId, btnId, label) { spCopy(textId, btnId, label); }
-
-  function xeReset() {
-    if (!confirm('Clear and start a new examination record?')) return;
-    location.reload();
-  }`
-      document.body.appendChild(appScript)
-    }
-    document.head.appendChild(supaScript)
-
-    return () => {
-      // Cleanup on unmount
-      document.getElementById('welcome-styles')?.remove()
-      document.getElementById('welcome-script')?.remove()
-    }
-  }, [])
-
-  return (
-    <div
-      ref={containerRef}
-      dangerouslySetInnerHTML={{ __html: `<!-- ══ SCREEN 0 — FILE NUMBER LOOKUP ══ -->
+}
+</style>
+</head>
+<body>
+<!-- ══ SCREEN 0 — FILE NUMBER LOOKUP ══ -->
 <div class="screen active" id="screen-lookup">
   <div class="lookup-card">
     <div class="lookup-title">Welcome</div>
@@ -5063,8 +4122,950 @@ body {
       </div><!-- /form-body-inner -->
     </div><!-- /form-card -->
   </div><!-- /form-page-wrap -->
-</div>` }}
-      style={{ minHeight: '100vh' }}
-    />
+</div>
+<script>
+// ── Supabase connection ──────────────────────────────────────────────────
+  const SUPA_URL = 'https://teqqwhvbkuudjmhxwgxo.supabase.co'
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlcXF3aHZia3V1ZGptaHh3Z3hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5Njg5NTAsImV4cCI6MjA5MzU0NDk1MH0.iE6LPe6SpMKciZyL8bZGzs-k6uQtTuoxGts-SVEXQmQ'
+  const supa = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null
+
+  // Current patient context (set by lookup)
+  var currentPatient = null
+  var lookupTimer = null
+
+  // ── File number lookup ───────────────────────────────────────────────────
+  function lookupFileNumber(val) {
+    clearTimeout(lookupTimer)
+    var v = val.trim().toUpperCase()
+    document.getElementById('lookup-error').textContent = ''
+    document.getElementById('lookup-patient-box').classList.remove('visible')
+    document.getElementById('lookup-btn').disabled = true
+    currentPatient = null
+
+    if (v.length < 4) return
+
+    lookupTimer = setTimeout(async function() {
+      if (!supa) return
+      var { data, error } = await supa
+        .from('patients')
+        .select('*')
+        .ilike('file_number', v)
+        .single()
+
+      if (error || !data) {
+        document.getElementById('lookup-error').textContent = 'File number not found. Check with reception.'
+        return
+      }
+
+      currentPatient = data
+      document.getElementById('lookup-patient-name').textContent = data.name
+      document.getElementById('lookup-patient-meta').textContent =
+        [data.age && 'Age ' + data.age, data.gender, data.occupation].filter(Boolean).join(' · ')
+      document.getElementById('lookup-patient-box').classList.add('visible')
+      document.getElementById('lookup-btn').disabled = false
+      document.getElementById('lookup-error').textContent = ''
+
+      // Auto-set consultation type from patient record
+      if (data.consultation_type) {
+        selectedType = data.consultation_type === 'quick_relief' ? 'symptom' : 'both'
+      }
+    }, 500)
+  }
+
+  function confirmLookup() {
+    if (!currentPatient) return
+    goToScreen('screen-welcome')
+  }
+
+  function skipLookup() {
+    currentPatient = null
+    goToScreen('screen-welcome')
+  }
+
+  // ── Save to Supabase ─────────────────────────────────────────────────────
+  async function saveSimpleIntakeToSupabase(formData) {
+    if (!supa || !currentPatient) return
+    try {
+      await supa.from('intake_simple').insert({
+        patient_id: currentPatient.id,
+        complaint: formData.complaint,
+        duration: formData.duration,
+        area_affected: formData.area,
+        pain_score: parseInt(formData.pain) || null,
+        health_conditions: formData.conditions,
+        medications: formData.meds,
+        allergies: formData.allergies,
+        previous_treatment: formData.prev,
+        previous_treatment_detail: formData.prevDetail,
+        consent_signed: true,
+        signature: formData.sig,
+        raw_data: formData
+      })
+      console.log('Simple intake saved to Supabase')
+    } catch(e) {
+      console.error('Supabase save error:', e)
+    }
+  }
+
+  async function saveFullIntakeToSupabase(formData) {
+    if (!supa || !currentPatient) return
+    try {
+      await supa.from('intake_full').insert({
+        patient_id: currentPatient.id,
+        complaint: formData.complaint,
+        duration: formData.duration,
+        goal_short: formData.goalShort,
+        goal_long: formData.goalLong,
+        medications: formData.meds,
+        allergy_drug: formData.allergyDrug,
+        allergy_food: formData.allergyFood,
+        sleep_hours: formData.sleepHrs,
+        sleep_quality: formData.sleepQual,
+        stress_level: parseInt(formData.stress) || null,
+        brushing: formData.brush,
+        flossing: formData.floss,
+        anxiety_level: parseInt(formData.anxiety) || null,
+        amalgam: formData.amalgam,
+        consent_signed: true,
+        signature: formData.sig,
+        raw_data: formData
+      })
+      console.log('Full intake saved to Supabase')
+    } catch(e) {
+      console.error('Supabase save error:', e)
+    }
+  }
+
+  async function saveSimpleExamToSupabase(formData) {
+    if (!supa || !currentPatient) return
+    try {
+      await supa.from('examinations').insert({
+        patient_id: currentPatient.id,
+        exam_type: 'simple',
+        chief_complaint: formData.complaint,
+        pain_score: parseInt(formData.pain) || null,
+        diagnosis: formData.diagnosis,
+        prescription: formData.rx,
+        further_treatment: formData.nextTx,
+        next_appointment: formData.nextAppt,
+        raw_data: formData
+      })
+      console.log('Exam saved to Supabase')
+    } catch(e) {
+      console.error('Supabase save error:', e)
+    }
+  }
+
+  async function saveFullExamToSupabase(formData) {
+    if (!supa || !currentPatient) return
+    try {
+      await supa.from('examinations').insert({
+        patient_id: currentPatient.id,
+        exam_type: 'full',
+        primary_diagnosis: formData.primaryDx,
+        secondary_diagnosis: formData.secondaryDx,
+        phase1: formData.phase1,
+        phase2: formData.phase2,
+        phase3: formData.phase3,
+        phase4: formData.phase4,
+        next_appointment: formData.nextAppt,
+        raw_data: formData
+      })
+      console.log('Full exam saved to Supabase')
+    } catch(e) {
+      console.error('Supabase save error:', e)
+    }
+  }
+
+
+  var selectedType = null;
+
+  var hints = {
+    symptom:   'Perfect. We\\'ll focus completely on what\\'s bothering you today.',
+    rootcause: 'Great choice. We\\'ll fix it and find out why it happened.',
+    both:      'Great choice. You\\'ll leave knowing the full picture — today and long-term.'
+  };
+
+  var badges = {
+    symptom:   'Quick Relief',
+    rootcause: 'The Full Picture',
+    both:      'The Full Picture'
+  };
+
+  var messages = {
+    symptom:
+      'Your intake form is ready. Please take your time — there are no right or wrong answers. ' +
+      'Everything you share helps Dr. Priyanka understand and support you better today.',
+    rootcause:
+      'Your full intake form is ready. Please take your time — the more you share, the better Dr. Priyanka can understand and help you.',
+    both:
+      'Your complete intake form is ready. Take your time — you\\'re about to get the full picture of your health, inside and out.'
+  };
+
+  function goToScreen(id) {
+    // Update badge if navigating to full form screens
+    if ((id === 'screen-form-full' || id === 'screen-exam-full')) {
+      var badge = document.getElementById('ff-badge');
+      if (badge) badge.textContent = selectedType === 'both' ? 'The Complete Visit' : 'Deep Dive';
+    }
+    // Hide all screens immediately — no delay, no race condition
+    document.querySelectorAll('.screen').forEach(function(s) {
+      s.classList.remove('active', 'visible');
+      s.style.display = 'none';
+    });
+
+    var target = document.getElementById(id);
+    // Show the target screen
+    target.style.display = 'flex';
+    target.classList.add('active');
+
+    // Trigger fade-in on the very next paint
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        target.classList.add('visible');
+      });
+    });
+
+    window.scrollTo(0, 0);
+  }
+
+  function selectCard(card, type) {
+    document.querySelectorAll('.choice-card').forEach(function(c) {
+      c.classList.remove('selected');
+    });
+    card.classList.add('selected');
+    selectedType = type;
+    document.getElementById('selection-hint').textContent = hints[type];
+    document.getElementById('btn-proceed').classList.add('ready');
+  }
+
+  function confirmSelection() {
+    if (!selectedType) return;
+    if (selectedType === 'symptom') {
+      goToScreen('screen-form-simple');
+    } else {
+      goToScreen('screen-form-full');
+    }
+  }
+
+  // Show first screen on load
+  window.addEventListener('load', function() {
+    var lookup = document.getElementById('screen-lookup');
+    lookup.style.display = 'flex';
+    lookup.classList.add('active');
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        lookup.classList.add('visible');
+      });
+    });
+  });
+
+
+  // ── Simple form stepper ─────────────────────────────────────────────────
+  var spCurrent = 1;
+  function spStep(n) {
+    document.getElementById('sp-s' + spCurrent).classList.remove('active');
+    spCurrent = n;
+    document.getElementById('sp-s' + n).classList.add('active');
+    document.getElementById('sp-fill').style.width = Math.round((n/4)*100) + '%';
+    document.getElementById('sp-label').textContent = 'Step ' + n + ' of 4';
+    window.scrollTo(0,0);
+  }
+
+  function spGetRadio(name) {
+    var s = document.querySelector('input[name="' + name + '"]:checked');
+    return s && s.nextElementSibling ? s.nextElementSibling.textContent.trim() : 'Not answered';
+  }
+
+  function spVal(id) {
+    var el = document.getElementById(id);
+    return el && el.value.trim() ? el.value.trim() : '—';
+  }
+
+  function spBuildData() {
+    var L = [];
+    L.push('=== QUICK RELIEF PRE-CONSULTATION ===');
+    L.push('Clinician: Dr. Priyanka Dhondaley | Bengaluru');
+    L.push('Generated: ' + new Date().toLocaleString('en-IN'));
+    L.push('Consultation type: Quick Relief Visit');
+    L.push('');
+    L.push('── PATIENT ──');
+    L.push('Name: ' + spVal('sp-name'));
+    L.push('Age: ' + spVal('sp-age'));
+    L.push('Gender: ' + spVal('sp-gender'));
+    L.push('Phone: ' + spVal('sp-phone'));
+    L.push('Referred by: ' + spVal('sp-ref'));
+    L.push('');
+    L.push('── CHIEF CONCERN ──');
+    L.push('Main complaint: ' + spVal('sp-complaint'));
+    L.push('Duration: ' + spGetRadio('sp-dur'));
+    L.push('Area affected: ' + spGetRadio('sp-area'));
+    L.push('Pain / discomfort level: ' + spVal('sp-pain') + ' / 10');
+    L.push('');
+    L.push('── HEALTH BACKGROUND ──');
+    L.push('Health conditions: ' + spVal('sp-conditions'));
+    L.push('Medications / supplements: ' + spVal('sp-meds'));
+    L.push('Allergies: ' + spVal('sp-allergies'));
+    L.push('Previous dental treatment for this: ' + spGetRadio('sp-prev'));
+    L.push('Previous treatment details: ' + spVal('sp-prev-detail'));
+    L.push('');
+    return L.join('\\n');
+  }
+
+  function spBuildPrompt(data, name) {
+    return 'You are a clinical decision-support assistant specialising in functional dentistry. ' +
+      'I am Dr. Priyanka Dhondaley, a functional dentist in Bengaluru. ' +
+      'I am about to see ' + name + ' for a focused Quick Relief consultation. ' +
+      'Based on their brief intake below, generate a concise pre-consultation briefing with:\\n\\n' +
+      '1. CHIEF CONCERN — Clinical read of their complaint in 2–3 sentences\\n' +
+      '2. RED FLAGS — Any urgent or watch-level findings (max 4, colour coded: URGENT / WATCH / NOTE)\\n' +
+      '3. FOCUS FOR TODAY — What to examine, what to look for, what to rule out (3–4 sentences)\\n' +
+      '4. SAFETY CHECKS — Any allergy, medication, or health condition interactions to be aware of before treatment\\n' +
+      '5. CHAIR-SIDE PROMPTS — 2–3 questions to ask this patient when they sit down\\n\\n' +
+      'Keep it brief and action-focused — this is a targeted relief visit, not a full functional workup. ' +
+      'After the briefing, produce a clean PDF using Python and reportlab in the same style as the functional dentistry briefings ' +
+      '(forest green header, patient name band, colour-coded flags, readable in 30 seconds).\\n\\n' +
+      'Patient intake:\\n\\n---\\n\\n' + data;
+  }
+
+  function spSubmit() {
+    if (!document.getElementById('sp-consent-check').checked) {
+      alert('Please tick the consent checkbox before submitting.');
+      return;
+    }
+    var data = spBuildData();
+    var name = spVal('sp-name') !== '—' ? spVal('sp-name') : 'this patient';
+    var prompt = spBuildPrompt(data, name);
+
+    document.getElementById('sp-prompt-text').textContent = prompt;
+    document.getElementById('sp-data-text').textContent = data;
+    document.getElementById('sp-sum-name').textContent = (name !== 'this patient' ? name : 'Patient') + ' — form submitted';
+    document.getElementById('sp-sum-time').textContent = new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+
+    // Save to Supabase
+    saveSimpleIntakeToSupabase({
+      complaint: spVal('sp-complaint'),
+      duration: spGetRadio('sp-dur'),
+      area: spGetRadio('sp-area'),
+      pain: spVal('sp-pain'),
+      conditions: spVal('sp-conditions'),
+      meds: spVal('sp-meds'),
+      allergies: spVal('sp-allergies'),
+      prev: spGetRadio('sp-prev'),
+      prevDetail: spVal('sp-prev-detail'),
+      sig: spVal('sp-sig'),
+      date: spVal('sp-date')
+    })
+
+    document.getElementById('sp-steps').style.display = 'none';
+    document.getElementById('sp-summary').classList.add('factive');
+    window.scrollTo(0,0);
+  }
+
+  function spCopy(textId, btnId, label) {
+    var text = document.getElementById(textId).textContent;
+    function flash() {
+      var btn = document.getElementById(btnId);
+      btn.textContent = 'Copied ✓'; btn.classList.add('fdone');
+      setTimeout(function() { btn.textContent = label; btn.classList.remove('fdone'); }, 2500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(flash).catch(function() { fbFallback(text, flash); });
+    } else { fbFallback(text, flash); }
+  }
+
+  function fbFallback(text, cb) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+    ta.setAttribute('readonly','');
+    document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, ta.value.length);
+    try { document.execCommand('copy'); cb(); } catch(e) { alert('Please copy manually: Ctrl+A then Ctrl+C'); }
+    document.body.removeChild(ta);
+  }
+
+  function spReset() {
+    if (!confirm('Clear and start over for a new patient?')) return;
+    location.reload();
+  }
+
+  // ── Full form stepper ────────────────────────────────────────────────────
+  var ffCurrent = 1;
+  function ffStep(n) {
+    document.getElementById('ff-s' + ffCurrent).classList.remove('active');
+    ffCurrent = n;
+    document.getElementById('ff-s' + n).classList.add('active');
+    document.getElementById('ff-fill').style.width = Math.round((n/7)*100) + '%';
+    document.getElementById('ff-label').textContent = 'Section ' + n + ' of 7';
+    window.scrollTo(0,0);
+  }
+
+  function ffGetChecked(groupId) {
+    var g = document.getElementById(groupId);
+    if (!g) return 'None';
+    var items = [];
+    g.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
+      if (cb.nextElementSibling) items.push(cb.nextElementSibling.textContent.trim());
+    });
+    return items.length ? items.join(', ') : 'None';
+  }
+
+  function ffGetRadio(name) {
+    var s = document.querySelector('input[name="' + name + '"]:checked');
+    return s && s.nextElementSibling ? s.nextElementSibling.textContent.trim() : 'Not answered';
+  }
+
+  function ffVal(id) {
+    var el = document.getElementById(id);
+    return el && el.value.trim() ? el.value.trim() : '—';
+  }
+
+  function ffBuildData() {
+    var L = [];
+    L.push('=== FUNCTIONAL DENTISTRY PRE-CONSULTATION INTAKE ===');
+    L.push('Clinician: Dr. Priyanka Dhondaley | Bengaluru');
+    L.push('Generated: ' + new Date().toLocaleString('en-IN'));
+    L.push('Consultation type: ' + (selectedType === 'both' ? 'Complete Visit' : 'Deep Dive'));
+    L.push('');
+    L.push('── PERSONAL INFORMATION ──');
+    L.push('Name: ' + ffVal('ff-name'));
+    L.push('Date of birth: ' + ffVal('ff-dob'));
+    L.push('Age: ' + ffVal('ff-age'));
+    L.push('Gender: ' + ffVal('ff-gender'));
+    L.push('Phone: ' + ffVal('ff-phone'));
+    L.push('Email: ' + ffVal('ff-email'));
+    L.push('Address: ' + ffVal('ff-address'));
+    L.push('Occupation: ' + ffVal('ff-occ'));
+    L.push('Referred by: ' + ffVal('ff-ref'));
+    L.push('');
+    L.push('── CHIEF CONCERN & HEALTH GOALS ──');
+    L.push('Main reason for consultation: ' + ffVal('ff-complaint'));
+    L.push('Duration of concern: ' + ffGetRadio('ff-duration'));
+    L.push('Previous treatment sought: ' + ffGetRadio('ff-prev-tx'));
+    L.push('Previous treatment details: ' + ffVal('ff-prevtx-detail'));
+    L.push('Short-term goal: ' + ffVal('ff-goal-short'));
+    L.push('Long-term goal: ' + ffVal('ff-goal-long'));
+    L.push('');
+    L.push('── MEDICAL HISTORY ──');
+    L.push('Current conditions: ' + ffGetChecked('ff-g-conditions'));
+    L.push('Other conditions: ' + ffVal('ff-conditions-other'));
+    L.push('Medications & supplements: ' + ffVal('ff-meds'));
+    L.push('Drug allergies: ' + ffVal('ff-allergy-drug'));
+    L.push('Material/metal allergies: ' + ffVal('ff-allergy-material'));
+    L.push('Food allergies/intolerances: ' + ffVal('ff-allergy-food'));
+    L.push('Surgical history: ' + ffVal('ff-surgeries'));
+    L.push('Family history: ' + ffGetChecked('ff-g-family'));
+    L.push('');
+    L.push('── LIFESTYLE & NUTRITION ──');
+    L.push('Diet type: ' + ffVal('ff-diet'));
+    L.push('Meals per day: ' + ffVal('ff-meals'));
+    L.push('Daily water intake: ' + ffVal('ff-water'));
+    L.push('Diet habits: ' + ffGetChecked('ff-g-diet-habits'));
+    L.push('Average sleep: ' + ffVal('ff-sleep-hrs'));
+    L.push('Sleep quality: ' + ffVal('ff-sleep-qual'));
+    L.push('Sleep symptoms: ' + ffGetChecked('ff-g-sleep'));
+    L.push('Exercise frequency: ' + ffVal('ff-exercise'));
+    L.push('Stress level: ' + ffVal('ff-stress') + '/10');
+    L.push('Stress factors: ' + ffGetChecked('ff-g-stress'));
+    L.push('Habits: ' + ffGetChecked('ff-g-habits'));
+    L.push('');
+    L.push('── DENTAL & ORAL HISTORY ──');
+    L.push('Last dental visit: ' + ffVal('ff-last-visit'));
+    L.push('Reason for last visit: ' + ffVal('ff-last-reason'));
+    L.push('Current oral symptoms: ' + ffGetChecked('ff-g-oral-symptoms'));
+    L.push('Brushing frequency: ' + ffVal('ff-brush'));
+    L.push('Flossing frequency: ' + ffVal('ff-floss'));
+    L.push('Toothpaste: ' + ffVal('ff-toothpaste'));
+    L.push('Mouthwash: ' + ffVal('ff-mouthwash'));
+    L.push('Extra hygiene tools: ' + ffGetChecked('ff-g-hygiene-extras'));
+    L.push('Previous dental treatment: ' + ffGetChecked('ff-g-prev-dental'));
+    L.push('Dental anxiety (0-10): ' + ffVal('ff-anxiety'));
+    L.push('Past traumatic dental experience: ' + ffVal('ff-dental-trauma'));
+    L.push('');
+    L.push('── HORMONAL HEALTH & ENVIRONMENTAL EXPOSURE ──');
+    L.push('Hormonal/reproductive: ' + ffGetChecked('ff-g-hormonal'));
+    L.push('Hormonal oral changes: ' + ffVal('ff-hormonal-oral'));
+    L.push('Environmental/toxic exposure: ' + ffGetChecked('ff-g-toxins'));
+    L.push('Amalgam fillings: ' + ffVal('ff-amalgam'));
+    L.push('Metal/material sensitivities: ' + ffVal('ff-metal-sensitivity'));
+    L.push('Recent investigations: ' + ffVal('ff-recent-labs'));
+    L.push('');
+    return L.join('\\n');
+  }
+
+  function ffBuildPrompt(data, name) {
+    return 'You are a clinical decision-support assistant specialising in functional dentistry. ' +
+      'I am Dr. Priyanka Dhondaley, a functional dentist in Bengaluru. ' +
+      'I am about to see ' + name + ' and need a pre-consultation briefing based on their intake form.\\n\\n' +
+      'Generate a structured clinical briefing and then produce it as a downloadable PDF. Use the following sections:\\n\\n' +
+      '1. COMPLEXITY TIER — Rate as Low / Moderate / High / Complex with a one-line rationale\\n' +
+      '2. CHIEF CONCERN — Clinical reframe of their presenting complaint in functional dentistry language (2-3 sentences)\\n' +
+      '3. RED FLAGS — URGENT / WATCH / NOTE colour-coded list. Maximum 6 flags.\\n' +
+      '4. SYSTEMIC DRIVERS — Which body systems are contributing to their oral health picture\\n' +
+      '5. FOCUS AREAS FOR THIS CONSULT — What to examine carefully (3-5 sentences)\\n' +
+      '6. SUGGESTED INVESTIGATIONS — Specific tests to consider ordering. Max 8.\\n' +
+      '7. CHAIR-SIDE CONVERSATION PROMPTS — 3-4 open questions tailored to this patient\\n\\n' +
+      'After the briefing, produce a clean PDF using Python and reportlab (forest green header, patient band, colour-coded flags).\\n\\n' +
+      'Patient intake:\\n\\n---\\n\\n' + data;
+  }
+
+  function ffSubmit() {
+    if (!document.getElementById('ff-consent-check').checked) {
+      alert('Please tick the consent checkbox before submitting.');
+      return;
+    }
+    var data = ffBuildData();
+    var name = ffVal('ff-name') !== '—' ? ffVal('ff-name') : 'this patient';
+    var prompt = ffBuildPrompt(data, name);
+
+    document.getElementById('ff-prompt-text').textContent = prompt;
+    document.getElementById('ff-data-text').textContent = data;
+    document.getElementById('ff-sum-name').textContent = (name !== 'this patient' ? name : 'Patient') + ' — intake submitted';
+    document.getElementById('ff-sum-time').textContent = new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+
+    // Save to Supabase
+    saveFullIntakeToSupabase({
+      complaint: ffVal('ff-complaint'),
+      duration: ffGetRadio('ff-duration'),
+      goalShort: ffVal('ff-goal-short'),
+      goalLong: ffVal('ff-goal-long'),
+      meds: ffVal('ff-meds'),
+      allergyDrug: ffVal('ff-allergy-drug'),
+      allergyFood: ffVal('ff-allergy-food'),
+      sleepHrs: ffVal('ff-sleep-hrs'),
+      sleepQual: ffVal('ff-sleep-qual'),
+      stress: ffVal('ff-stress'),
+      brush: ffVal('ff-brush'),
+      floss: ffVal('ff-floss'),
+      anxiety: ffVal('ff-anxiety'),
+      amalgam: ffVal('ff-amalgam'),
+      sig: ffVal('ff-sig'),
+      date: ffVal('ff-sig-date')
+    })
+
+    document.getElementById('ff-steps').style.display = 'none';
+    document.getElementById('ff-summary').classList.add('factive');
+    window.scrollTo(0,0);
+  }
+
+  function ffCopy(textId, btnId, label) { spCopy(textId, btnId, label); }
+
+  function ffReset() {
+    if (!confirm('Clear and start over for a new patient?')) return;
+    location.reload();
+  }
+
+
+  // ── Simple symptom consultation form ──────────────────────────────────────
+  var seCurrent = 1;
+
+  function seStep(n) {
+    document.getElementById('se-s' + seCurrent).classList.remove('active');
+    seCurrent = n;
+    document.getElementById('se-s' + n).classList.add('active');
+    document.getElementById('se-fill').style.width = Math.round((n/4)*100) + '%';
+    document.getElementById('se-label').textContent = 'Section ' + n + ' of 4';
+    window.scrollTo(0,0);
+  }
+
+  function seVal(id) {
+    var el = document.getElementById(id); return el && el.value.trim() ? el.value.trim() : '—';
+  }
+
+  function seGetChecked(groupId) {
+    var g = document.getElementById(groupId);
+    if (!g) return 'None';
+    var items = [];
+    g.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
+      if (cb.nextElementSibling) items.push(cb.nextElementSibling.textContent.trim());
+    });
+    return items.length ? items.join(', ') : 'None';
+  }
+
+  function seGetAllChecked(stepId) {
+    var step = document.getElementById(stepId);
+    if (!step) return [];
+    var results = [];
+    step.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
+      var divider = cb.closest('.fsection').querySelector('.fdivider');
+      // Find nearest preceding divider
+      var allDividers = Array.from(cb.closest('.fsection').querySelectorAll('.fdivider'));
+      var preceding = null;
+      allDividers.forEach(function(d) {
+        if (d.compareDocumentPosition(cb) & Node.DOCUMENT_POSITION_FOLLOWING) preceding = d;
+      });
+      var label = preceding ? preceding.textContent.trim() : 'Selected';
+      var text = cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : '';
+      results.push(label + ': ' + text);
+    });
+    return results;
+  }
+
+  function seBuildSummary() {
+    var L = [];
+    L.push('=== SYMPTOM-BASED CONSULTATION RECORD ===');
+    L.push('Clinician: Dr. Priyanka Dhondaley | Bengaluru');
+    L.push('Date: ' + new Date().toLocaleString('en-IN'));
+    L.push('');
+    L.push('── PATIENT ──');
+    L.push('Name: ' + seVal('se-name'));
+    L.push('Age: ' + seVal('se-age'));
+    L.push('Date: ' + seVal('se-date'));
+    L.push('File no.: ' + seVal('se-file'));
+    L.push('Consultation type: ' + seVal('se-type'));
+    L.push('');
+    L.push('── CHIEF COMPLAINT ──');
+    L.push('Complaint: ' + seVal('se-complaint'));
+    L.push('Duration: ' + seVal('se-duration'));
+    L.push('Pain score: ' + seVal('se-pain') + ' / 10');
+
+    // Pain character checkboxes
+    var painChars = [];
+    document.querySelectorAll('#se-s1 input[type=checkbox]:checked').forEach(function(cb) {
+      if (cb.nextElementSibling) painChars.push(cb.nextElementSibling.textContent.trim());
+    });
+    if (painChars.length) L.push('Pain character: ' + painChars.join(', '));
+    L.push('');
+
+    L.push('── CLINICAL FINDINGS ──');
+    L.push('Tooth/teeth: ' + seVal('se-tooth'));
+    L.push('Vitality test: ' + seVal('se-vitality'));
+    L.push('Percussion: ' + seVal('se-percussion'));
+    L.push('Palpation: ' + seVal('se-palpation'));
+    L.push('Probing depths: ' + seVal('se-probing'));
+    L.push('Bleeding on probing: ' + seVal('se-bop'));
+    L.push('Gingival status: ' + seVal('se-gingiva'));
+    L.push('Mobility: ' + seVal('se-mobility'));
+    L.push('Radiograph taken: ' + seVal('se-xray-type'));
+    L.push('Radiographic findings: ' + seVal('se-xray-findings'));
+    L.push('Radiographic notes: ' + seVal('se-xray-notes'));
+    L.push('Caries: ' + seVal('se-caries'));
+    L.push('Existing restoration: ' + seVal('se-restoration'));
+    L.push('Clinical notes: ' + seVal('se-clinical-notes'));
+    L.push('');
+
+    L.push('── DIAGNOSIS & TREATMENT ──');
+    L.push('Diagnosis: ' + seVal('se-diagnosis'));
+    L.push('Diagnosis notes: ' + seVal('se-diagnosis-notes'));
+    L.push('Treatment provided: ' + seGetChecked('se-g-tx'));
+    L.push('Treatment notes: ' + seVal('se-tx-notes'));
+    L.push('Prescription: ' + seVal('se-rx'));
+    L.push('Further treatment needed: ' + seVal('se-next-tx'));
+    L.push('');
+
+    L.push('── PATIENT COMMUNICATION ──');
+    L.push('Diagnosis explained: ' + seVal('se-explained'));
+    L.push('Home care advice: ' + seVal('se-homecare'));
+
+    var postop = [];
+    document.querySelectorAll('#se-s4 input[type=checkbox]:checked').forEach(function(cb) {
+      if (cb.nextElementSibling) postop.push(cb.nextElementSibling.textContent.trim());
+    });
+    if (postop.length) L.push('Post-op instructions given: ' + postop.join(', '));
+
+    L.push('Next appointment: ' + seVal('se-next-appt'));
+    L.push('Recall interval: ' + seVal('se-recall'));
+    L.push('');
+    L.push('Clinician: Dr. Priyanka Dhondaley');
+    L.push('Date signed: ' + seVal('se-sign-date'));
+
+    return L.join('\\n');
+  }
+
+  function seSubmit() {
+    var summary = seBuildSummary();
+    var patientName = seVal('se-name');
+
+    var prompt = 'You are a clinical decision-support assistant specialising in functional dentistry. ' +
+      'I am Dr. Priyanka Dhondaley, a functional dentist in Bengaluru. ' +
+      'I have just completed a symptom-based consultation for ' + patientName + '. ' +
+      'Based on the consultation record below, generate a concise Treatment Summary Report with:\\n\\n' +
+      '1. DIAGNOSIS SUMMARY — Confirm and briefly explain the working diagnosis in plain language\\n' +
+      '2. TREATMENT PROVIDED — What was done today and why\\n' +
+      '3. NEXT STEPS — What needs to happen next, in priority order\\n' +
+      '4. PATIENT INSTRUCTIONS — Key home care points for this patient\\n' +
+      '5. WATCH FOR — Signs that would indicate the patient needs to return urgently\\n\\n' +
+      'Keep it concise — this is a symptom-based visit, not a full functional workup. ' +
+      'After the report, produce a clean PDF using Python and reportlab ' +
+      '(forest green header, patient name band, clean sections, clinician copy). ' +
+      'Consultation record:\\n\\n---\\n\\n' + summary;
+
+    document.getElementById('se-summary-text').textContent = prompt;
+    document.getElementById('se-saved-name').textContent =
+      (patientName !== '—' ? patientName : 'Patient') + ' — record complete';
+    document.getElementById('se-saved-time').textContent =
+      new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+
+    // Save to Supabase
+    saveSimpleExamToSupabase({
+      complaint: seVal('se-complaint'),
+      pain: seVal('se-pain'),
+      diagnosis: seVal('se-diagnosis'),
+      rx: seVal('se-rx'),
+      nextTx: seVal('se-next-tx'),
+      nextAppt: seVal('se-next-appt')
+    })
+
+    document.getElementById('se-steps').style.display = 'none';
+    document.getElementById('se-saved').classList.add('factive');
+    window.scrollTo(0,0);
+  }
+
+  function seCopy() {
+    var text = document.getElementById('se-summary-text').textContent;
+    function flash() {
+      var btn = document.getElementById('se-copy-btn');
+      btn.textContent = 'Copied ✓'; btn.classList.add('fdone');
+      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('fdone'); }, 2500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(flash).catch(function() { fbFallback(text, flash); });
+    } else { fbFallback(text, flash); }
+  }
+
+  function seReset() {
+    if (!confirm('Clear and start a new consultation record?')) return;
+    location.reload();
+  }
+
+
+  // ── Full functional exam form (xe prefix) ──────────────────────────────────
+  var xeCurrent = 1;
+
+  function xeStep(n) {
+    document.getElementById('xe-s' + xeCurrent).classList.remove('active');
+    xeCurrent = n;
+    document.getElementById('xe-s' + n).classList.add('active');
+    document.getElementById('xe-fill').style.width = Math.round((n/6)*100) + '%';
+    document.getElementById('xe-label').textContent = 'Section ' + n + ' of 6';
+    window.scrollTo(0,0);
+  }
+
+  // Build muscle palpation table for xe form
+  (function() {
+    var muscles = ['Masseter','Temporalis (anterior)','Temporalis (posterior)',
+      'Medial pterygoid','Lateral pterygoid','Sternocleidomastoid','Trapezius','Digastric'];
+    var opts = '<option value="">—</option><option>NT</option><option>0 — no pain</option>' +
+               '<option>1 — mild</option><option>2 — moderate</option><option>3 — severe</option>';
+    var container = document.getElementById('xe-muscle-rows');
+    if (!container) return;
+    muscles.forEach(function(m, i) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:6px;';
+      row.innerHTML = '<span style="font-family:var(--sans);font-size:13px;color:var(--ink);">' + m + '</span>' +
+        '<select id="xe-muscle-r-' + i + '" style="font-family:var(--sans);font-size:12px;padding:5px 7px;border:0.5px solid var(--sand);border-radius:8px;background:var(--cream);color:var(--ink);width:100%;outline:none;-webkit-appearance:none;">' + opts + '</select>' +
+        '<select id="xe-muscle-l-' + i + '" style="font-family:var(--sans);font-size:12px;padding:5px 7px;border:0.5px solid var(--sand);border-radius:8px;background:var(--cream);color:var(--ink);width:100%;outline:none;-webkit-appearance:none;">' + opts + '</select>';
+      container.appendChild(row);
+    });
+  })();
+
+  function xeVal(id) {
+    var el = document.getElementById(id);
+    return el && el.value.trim() ? el.value.trim() : '—';
+  }
+
+  function xeGetChecked(groupId) {
+    var g = document.getElementById(groupId);
+    if (!g) return 'None';
+    var items = [];
+    g.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
+      if (cb.nextElementSibling) items.push(cb.nextElementSibling.textContent.trim());
+    });
+    return items.length ? items.join(', ') : 'None';
+  }
+
+  function xeGetMuscles() {
+    var muscles = ['Masseter','Temporalis (anterior)','Temporalis (posterior)',
+      'Medial pterygoid','Lateral pterygoid','Sternocleidomastoid','Trapezius','Digastric'];
+    var lines = [];
+    muscles.forEach(function(m, i) {
+      var r = document.getElementById('xe-muscle-r-' + i);
+      var l = document.getElementById('xe-muscle-l-' + i);
+      if (r && l && (r.value || l.value)) {
+        lines.push(m + ': R=' + (r.value||'—') + ' / L=' + (l.value||'—'));
+      }
+    });
+    return lines.length ? lines.join('; ') : '—';
+  }
+
+  function xeBuildData() {
+    var L = [];
+    L.push('=== FUNCTIONAL DENTISTRY CLINICAL EXAMINATION RECORD ===');
+    L.push('Clinician: Dr. Priyanka Dhondaley | Bengaluru');
+    L.push('Generated: ' + new Date().toLocaleString('en-IN'));
+    L.push('');
+    L.push('── PATIENT IDENTIFICATION ──');
+    L.push('Patient name: ' + xeVal('xe-name'));
+    L.push('File number: ' + xeVal('xe-id'));
+    L.push('Examination date: ' + xeVal('xe-date'));
+    L.push('Consultation type: ' + xeVal('xe-type'));
+    L.push('Referral source: ' + xeVal('xe-ref'));
+    L.push('');
+    L.push('── EXTRAORAL EXAMINATION ──');
+    L.push('Facial symmetry: ' + xeVal('xe-symmetry'));
+    L.push('Facial profile: ' + xeVal('xe-profile'));
+    L.push('Vertical face height: ' + xeVal('xe-vfh'));
+    L.push('Facial muscle tone: ' + xeVal('xe-muscle-tone'));
+    L.push('Airway / breathing signs: ' + xeGetChecked('xe-g-airway'));
+    L.push('Airway questionnaire score: ' + xeVal('xe-airway-score'));
+    L.push('Lymph nodes: ' + xeGetChecked('xe-g-lymph'));
+    L.push('Max mouth opening: ' + xeVal('xe-mmo') + ' mm');
+    L.push('Opening pattern: ' + xeVal('xe-opening'));
+    L.push('TMJ sounds — right: ' + xeVal('xe-tmj-r'));
+    L.push('TMJ sounds — left: ' + xeVal('xe-tmj-l'));
+    L.push('Muscle palpation: ' + xeGetMuscles());
+    L.push('Skin / nutritional clues: ' + xeGetChecked('xe-g-skin'));
+    L.push('Extraoral notes: ' + xeVal('xe-extraoral-notes'));
+    L.push('');
+    L.push('── INTRAORAL EXAMINATION ──');
+    L.push('Lips: ' + xeVal('xe-lips'));
+    L.push('Buccal mucosa: ' + xeVal('xe-buccal'));
+    L.push('Tongue size: ' + xeVal('xe-tongue-size'));
+    L.push('Tongue posture: ' + xeVal('xe-tongue-posture'));
+    L.push('Tongue dorsum: ' + xeVal('xe-tongue-dorsum'));
+    L.push('Frenulum: ' + xeVal('xe-frenulum'));
+    L.push('Hard palate: ' + xeVal('xe-palate'));
+    L.push('Soft palate / oropharynx: ' + xeVal('xe-oropharynx'));
+    L.push('Floor of mouth: ' + xeVal('xe-floor'));
+    L.push('Salivary flow: ' + xeVal('xe-saliva'));
+    L.push('Halitosis: ' + xeVal('xe-halitosis') + ' — origin: ' + xeVal('xe-halitosis-origin'));
+    L.push('Oral microbiome test: ' + xeVal('xe-microbiome'));
+    L.push('Salivary pH: ' + xeVal('xe-ph'));
+    L.push('BPE / Periodontal score: ' + xeVal('xe-bpe'));
+    L.push('Bleeding on probing: ' + xeVal('xe-bop'));
+    L.push('Furcation involvement: ' + xeVal('xe-furcation'));
+    L.push('Recession: ' + xeVal('xe-recession'));
+    L.push('Bone loss (radiographic): ' + xeVal('xe-bone-loss'));
+    L.push('Periodontal staging: ' + xeVal('xe-perio-stage'));
+    L.push('Nutritional oral clues: ' + xeGetChecked('xe-g-nutrition'));
+    L.push('Intraoral notes: ' + xeVal('xe-intraoral-notes'));
+    L.push('');
+    L.push('── DENTAL STATUS & OCCLUSION ──');
+    L.push('Teeth present: ' + xeVal('xe-teeth-count'));
+    L.push('Missing teeth: ' + xeVal('xe-missing'));
+    L.push('Caries activity: ' + xeVal('xe-caries'));
+    L.push('Caries risk: ' + xeVal('xe-caries-risk'));
+    L.push('Existing restorations: ' + xeVal('xe-restorations'));
+    L.push('Existing implants: ' + xeVal('xe-implants'));
+    L.push('Wear type: ' + xeVal('xe-wear-type') + ' | Severity: ' + xeVal('xe-wear-sev'));
+    L.push('BEWE score: ' + xeVal('xe-bewe'));
+    L.push('Wear aetiology: ' + xeVal('xe-wear-cause'));
+    L.push("Angle's classification: " + xeVal('xe-angles'));
+    L.push('Overjet: ' + xeVal('xe-overjet') + ' mm | Overbite: ' + xeVal('xe-overbite') + ' mm');
+    L.push('Crossbite: ' + xeVal('xe-crossbite'));
+    L.push('Upper arch: ' + xeVal('xe-arch-upper') + ' | Lower arch: ' + xeVal('xe-arch-lower'));
+    L.push('Tongue space: ' + xeVal('xe-tongue-space'));
+    L.push('Bruxism / parafunction: ' + xeVal('xe-bruxism'));
+    L.push('Dental notes: ' + xeVal('xe-dental-notes'));
+    L.push('');
+    L.push('── INVESTIGATIONS & FUNCTIONAL MATRIX ──');
+    L.push('Radiographs taken: ' + xeVal('xe-xrays'));
+    L.push('Previous radiographs: ' + xeVal('xe-prev-xray'));
+    L.push('Radiographic findings: ' + xeVal('xe-xray-findings'));
+    L.push('Labs ordered: ' + xeGetChecked('xe-g-labs'));
+    L.push('Other investigations: ' + xeVal('xe-other-labs'));
+    L.push('Functional drivers identified: ' + xeGetChecked('xe-g-drivers'));
+    L.push('Referrals indicated: ' + xeGetChecked('xe-g-referrals'));
+    L.push('');
+    L.push('── CLINICAL SUMMARY & CARE PLAN ──');
+    L.push('Primary diagnosis: ' + xeVal('xe-primary-dx'));
+    L.push('Secondary diagnoses: ' + xeVal('xe-secondary-dx'));
+    L.push('Antecedents: ' + xeVal('xe-antecedents'));
+    L.push('Triggers: ' + xeVal('xe-triggers'));
+    L.push('Mediators: ' + xeVal('xe-mediators'));
+    L.push('Phase 1 — Stabilisation: ' + xeVal('xe-phase1'));
+    L.push('Phase 2 — Root-cause: ' + xeVal('xe-phase2'));
+    L.push('Phase 3 — Restorative: ' + xeVal('xe-phase3'));
+    L.push('Phase 4 — Maintenance: ' + xeVal('xe-phase4'));
+    L.push('Patient communication: ' + xeVal('xe-communication'));
+    L.push('Next appointment: ' + xeVal('xe-next-appt'));
+    L.push('Date signed: ' + xeVal('xe-sign-date'));
+    return L.join('\\n');
+  }
+
+  function xeBuildPrompt(data, name) {
+    return 'You are a clinical decision-support assistant specialising in functional dentistry. ' +
+      'I am Dr. Priyanka Dhondaley, a functional dentist in Bengaluru. ' +
+      'I have just completed a clinical examination for ' + name + '. ' +
+      'Based on the full examination record below, generate a structured Treatment Planning Report.\\n\\n' +
+      'The report must include:\\n\\n' +
+      '1. CLINICAL SUMMARY — A concise 3–4 sentence overview of the key clinical findings and overall health picture.\\n\\n' +
+      '2. PRIORITY PROBLEM LIST — Rank all identified problems from most to least urgent. For each:\\n' +
+      '   - State the problem clearly\\n' +
+      '   - Explain why it is at this priority level\\n' +
+      '   - List 2–3 specific treatment options with brief pros/cons\\n\\n' +
+      '3. PHASED TREATMENT PLAN:\\n' +
+      '   Phase 1: Stabilisation & urgent care (within 1–2 visits)\\n' +
+      '   Phase 2: Root-cause & systemic intervention (weeks 2–8)\\n' +
+      '   Phase 3: Definitive restorative / rehabilitative care\\n' +
+      '   Phase 4: Maintenance, recall & monitoring\\n\\n' +
+      '4. FUNCTIONAL & SYSTEMIC FOCUS — Systemic or lifestyle interventions to run alongside dental treatment. Include specific nutrition, lifestyle, supplement, or referral recommendations.\\n\\n' +
+      '5. PATIENT COMMUNICATION NOTES — How to explain the plan to this specific patient. Key messages, likely questions, and potential barriers to compliance.\\n\\n' +
+      '6. RECALL & MONITORING SCHEDULE — Recommended recall interval, what to reassess, follow-up tests.\\n\\n' +
+      'Be specific to the clinical findings. Do not be generic. After the report, produce a clean PDF using Python and reportlab ' +
+      '(forest green header, patient name band, colour-coded priority levels HIGH/MODERATE/LOW, readable in under 2 minutes).\\n\\n' +
+      'Clinical examination record:\\n\\n---\\n\\n' + data;
+  }
+
+  function xeSubmit() {
+    var data = xeBuildData();
+    var name = xeVal('xe-name') !== '—' ? xeVal('xe-name') : 'this patient';
+    var prompt = xeBuildPrompt(data, name);
+
+    document.getElementById('xe-prompt-text').textContent = prompt;
+    document.getElementById('xe-data-text').textContent = data;
+    document.getElementById('xe-sum-name').textContent =
+      (name !== 'this patient' ? name : 'Patient') + ' — examination submitted';
+    document.getElementById('xe-sum-time').textContent =
+      new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+
+    // Save to Supabase
+    saveFullExamToSupabase({
+      primaryDx: xeVal('xe-primary-dx'),
+      secondaryDx: xeVal('xe-secondary-dx'),
+      phase1: xeVal('xe-phase1'),
+      phase2: xeVal('xe-phase2'),
+      phase3: xeVal('xe-phase3'),
+      phase4: xeVal('xe-phase4'),
+      nextAppt: xeVal('xe-next-appt')
+    })
+
+    document.getElementById('xe-steps').style.display = 'none';
+    document.getElementById('xe-summary').classList.add('factive');
+    window.scrollTo(0,0);
+  }
+
+  function xeCopy(textId, btnId, label) { spCopy(textId, btnId, label); }
+
+  function xeReset() {
+    if (!confirm('Clear and start a new examination record?')) return;
+    location.reload();
+  }
+<\/script>
+</body>
+</html>`
+
+export default function Tablet() {
+  useEffect(() => {
+    // Build a blob URL from the full page HTML and navigate to it
+    const blob = new Blob([FULL_PAGE], { type: 'text/html' })
+    const url  = URL.createObjectURL(blob)
+    window.location.replace(url)
+  }, [])
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#1e6b5a',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Georgia, serif',
+      color: 'rgba(250,247,242,0.6)',
+      fontSize: '1.1rem'
+    }}>
+      Opening patient welcome screen…
+    </div>
   )
 }
