@@ -5,13 +5,16 @@ const navItems = [
   { icon: '◎', label: 'Dashboard', path: '/' },
   { icon: '◈', label: 'Patients', path: '/patients' },
   { icon: '✦', label: 'New Patient', path: '/patients/new' },
-  { icon: '⬡', label: 'Today\'s Queue', path: '/today' },
 ]
 
 export default function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, signOut } = useAuth()
+
+  function openTablet() {
+    window.open('/tablet', '_blank', 'fullscreen=yes')
+  }
 
   return (
     <div className="sidebar">
@@ -34,27 +37,41 @@ export default function Sidebar() {
 
         <div style={{ flex: 1 }} />
 
-        <div style={{ padding: '0 1.25rem', marginTop: '1rem' }}>
-          <div style={{
-            height: '0.5px',
-            background: 'rgba(255,255,255,0.1)',
-            marginBottom: '0.75rem'
-          }}/>
-          <div style={{
-            fontFamily: 'var(--sans)',
-            fontSize: 10,
-            color: 'rgba(250,247,242,0.35)',
-            letterSpacing: '0.06em',
-            marginBottom: '4px',
-            textTransform: 'uppercase'
-          }}>Patient tablet</div>
+        {/* Patient tablet button */}
+        <div style={{ padding: '0 0.75rem', marginBottom: '0.5rem' }}>
           <button
-            className="nav-item"
-            style={{ padding: '7px 0' }}
-            onClick={() => window.open('/tablet', '_blank')}
+            onClick={openTablet}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '12px 14px',
+              background: 'rgba(196,168,130,0.18)',
+              border: '1px solid rgba(196,168,130,0.3)',
+              borderRadius: 12,
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              textAlign: 'left',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(196,168,130,0.28)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(196,168,130,0.18)'}
           >
-            <span className="nav-icon">⬚</span>
-            Open welcome screen
+            <span style={{ fontSize: 20 }}>⬚</span>
+            <div>
+              <div style={{
+                fontFamily: 'var(--sans)',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--cream)',
+                marginBottom: 1
+              }}>Patient tablet</div>
+              <div style={{
+                fontFamily: 'var(--sans)',
+                fontSize: 10,
+                color: 'rgba(250,247,242,0.5)',
+              }}>Open welcome screen</div>
+            </div>
           </button>
         </div>
       </nav>
