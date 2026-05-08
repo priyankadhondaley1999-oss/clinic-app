@@ -99,7 +99,7 @@ export default function Dashboard() {
                       {p.file_number}
                     </td>
                     <td>
-                      <span className={`badge ${p.consultation_type === 'quick_relief' ? 'badge-sand' : 'badge-green'}`}>
+                      <span className={`badge ${p.consultation_type === 'quick_relief' ? 'badge-sand' : p.consultation_type ? 'badge-green' : 'badge-sand'}`}>
                         {p.consultation_type === 'quick_relief' ? 'Quick Relief' : 'Full Picture'}
                       </span>
                     </td>
