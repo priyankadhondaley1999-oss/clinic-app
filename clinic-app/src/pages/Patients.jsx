@@ -90,8 +90,8 @@ export default function Patients() {
                     </td>
                     <td style={{ fontSize: 12.5 }}>{p.phone || '—'}</td>
                     <td>
-                      <span className={`badge ${p.consultation_type === 'quick_relief' ? 'badge-sand' : 'badge-green'}`}>
-                        {p.consultation_type === 'quick_relief' ? 'Quick Relief' : 'The Full Picture'}
+                      <span className={`badge ${p.consultation_type === 'quick_relief' ? 'badge-sand' : p.consultation_type ? 'badge-green' : 'badge-sand'}`}>
+                        {p.consultation_type === 'quick_relief' ? 'Quick Relief' : p.consultation_type === 'full_picture' ? 'The Full Picture' : 'Pending'}
                       </span>
                     </td>
                     <td style={{ fontSize: 12, color: 'var(--ink-lt)' }}>
