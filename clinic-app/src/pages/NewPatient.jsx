@@ -7,7 +7,6 @@ export default function NewPatient() {
   const [form, setForm] = useState({
     name: '', age: '', gender: '', phone: '', email: '',
     address: '', occupation: '', referred_by: '',
-    consultation_type: 'full_picture'
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -30,7 +29,6 @@ export default function NewPatient() {
       address: form.address || null,
       occupation: form.occupation || null,
       referred_by: form.referred_by || null,
-      consultation_type: form.consultation_type,
     })
 
     if (error) {
@@ -123,35 +121,6 @@ export default function NewPatient() {
           </div>
         </div>
 
-        <div style={{ marginTop: '0.5rem' }}>
-          <div className="divider">Consultation type</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
-            {[
-              { value: 'quick_relief', label: 'Quick Relief', desc: 'Symptom-based, focused visit' },
-              { value: 'full_picture', label: 'The Full Picture', desc: 'Full functional assessment (recommended)' }
-            ].map(opt => (
-              <div
-                key={opt.value}
-                onClick={() => set('consultation_type', opt.value)}
-                style={{
-                  padding: '12px 14px',
-                  border: `1.5px solid ${form.consultation_type === opt.value ? 'var(--forest)' : 'var(--sand)'}`,
-                  borderRadius: 12,
-                  cursor: 'pointer',
-                  background: form.consultation_type === opt.value ? 'rgba(30,107,90,0.06)' : 'var(--cream)',
-                  transition: 'all 0.15s'
-                }}
-              >
-                <div style={{ fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
-                  {opt.label}
-                </div>
-                <div style={{ fontFamily: 'var(--sans)', fontSize: 11.5, color: 'var(--ink-lt)', marginTop: 2 }}>
-                  {opt.desc}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="card" style={{
